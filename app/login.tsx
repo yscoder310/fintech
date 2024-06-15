@@ -10,8 +10,9 @@ import {
 import { useState } from "react";
 import { defaultStyles } from "@/constants/Styles";
 import Colors from "@/constants/Colors";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSignIn } from "@clerk/clerk-expo";
 
 enum SignInType {
   Phone,
@@ -25,7 +26,37 @@ const Page = () => {
   const [phoneNumber, setPhoneNummber] = useState("");
   const keyboardVerticalOffset = Platform.OS === "ios" ? 80 : 0;
 
-  const onSignIn = (type: SignInType) => {};
+  const router = useRouter();
+  const { signIn } = useSignIn();
+
+  const onSignIn = async (type: SignInType) => {
+    if (type === SignInType.Phone) {
+      try {
+        const fullNumber = `${countryCode}${phoneNumber}`;
+        const { supportedFirstFactors } = await signIn!.create({
+          identifier: fullNumber,
+        });
+
+        const firstphoneFactors: any = supportedFirstFactors.find(
+          (factor: any) => factor.strategy === "phone_code"
+        );
+
+        const { phoneNumberId } = firstphoneFactors;
+
+        await signIn?.prepareFirstFactor({
+          strategy: "phone_code",
+          phoneNumberId,
+        });
+        router.push({
+          pathname: "/verify/[phone]",
+          params: {
+            phone: fullNumber,
+            signin: "true",
+          },
+        });
+      } catch (error) {}
+    }
+  };
 
   return (
     <KeyboardAvoidingView
